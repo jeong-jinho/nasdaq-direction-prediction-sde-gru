@@ -29,16 +29,23 @@
 
 **데이터**
 - 나스닥 지수(시가/거래량/변동률), 달러인덱스(DXY), 미국 국채금리 — 일별 시계열
-- 결측치 제거 후 5가지 일간 변화율·차분 변수로 피처 구성, 표준화(평균 0, 분산 1) 적용
+- 결측치 제거 후 4가지 일간 변화율·차분 변수(지수 시가 수익률, 거래량 변화율, 변동률 지표, 국채금리 변화분)로 피처 구성, 표준화(평균 0, 분산 1) 적용
 - 시간순으로 분할(마지막 30일을 테스트 구간) — 랜덤 분할이 아닌 시계열 특성을 고려한 검증 설계
 
 **모델 1 — SDE (확률미분방정식 기반 점수추정 모델)**
-- 입력 4차원 → Softplus MLP(은닉층 32) → 확산/역확산 단계로 확률 구조 학습
+- 입력 4차원(지수 시가 수익률, 거래량 변화율, 변동률 지표, 국채금리 변화분) → Softplus MLP(은닉층 32) → 확산/역확산 단계로 확률 구조 학습
+- 손실 함수는 Gauss–Hermite 수치적분으로 확산 과정의 밀도 변화를 근사
 - 학습된 분포에서 모의 경로를 다수 생성해 상승 확률 50% 기준으로 방향 예측
+- Adam(lr=0.001, weight decay=1e-4), gradient clipping, Early Stopping(patience 100 epoch)
 
 **모델 2 — GRU (순환신경망)**
 - 시가/거래량/변동률/국채금리 4개 피처를 20일 시퀀스로 구성
 - 2층 GRU(은닉 64) + Dropout + FC layer, 다음날 시가 변화율 예측
+- Adam(lr=0.001, weight decay 적용), gradient clipping, Early Stopping(patience 50 epoch)
+
+> 달러인덱스는 초기 실험 변수로 포함해 테스트했으나, 성능 개선이 거의 없으면서 연산 부담만 늘어 최종 파이프라인에서는 제외하고 4차원(국채금리 포함)으로 진행했습니다.
+
+> 📄 하이퍼파라미터·수식 등 더 상세한 내용은 [`docs/technical-report.md`](docs/technical-report.md) 참고
 
 두 모델 모두 Adam 최적화, gradient clipping, Early Stopping을 동일하게 적용해 공정하게 비교했습니다.
 
@@ -47,7 +54,7 @@
 ## 주요 의사결정 & 트러블슈팅
 
 ### 1) 피처 선택 — 국채금리 vs 달러인덱스
-SDE 모델에 기본 변수만 썼을 때 정확도는 46.67%에 그쳤습니다. 국채금리를 추가하자 **60.00%로 13.33%p 개선**됐지만, 달러인덱스를 추가했을 때는 개선 효과가 거의 없었습니다. 이를 통해 "환율보다 금리·채권 요인이 단기 지수 등락에 더 직접적인 영향을 준다"는 인사이트를 얻었고, 이후 실험은 국채금리 중심으로 진행했습니다.
+SDE 모델에 기본 변수만 썼을 때 정확도는 46.67%에 그쳤습니다. 국채금리를 추가하자 **60.00%로 13.33%p 개선**됐지만, 달러인덱스를 추가했을 때는 개선 효과가 거의 없었습니다. 이를 통해 "환율보다 금리·채권 요인이 단기 지수 등락에 더 직접적인 영향을 준다"는 인사이트를 얻었고, 성능 개선도 없이 연산 부담만 늘리는 달러인덱스는 제외해 최종 파이프라인은 4차원(국채금리 포함)으로 확정했습니다.
 
 ### 2) GRU 데이터 누수(Data Leakage) 발견 및 수정
 GRU 초기 실험에서 정확도 86%라는, 금융 시계열 예측 치고는 비정상적으로 높은 결과가 나왔습니다. 좋은 결과라고 그냥 받아들이지 않고, 왜 이렇게 높은지 의심하고 파고들었습니다.
@@ -67,8 +74,10 @@ GRU 초기 실험에서 정확도 86%라는, 금융 시계열 예측 치고는 �
 | SDE | 기본 변수 | 46.67% |
 | SDE | + 국채금리 | **60.00%** |
 | SDE | + 달러인덱스 | 개선 미미 |
-| GRU | 초기 (데이터 누수 상태) | 86% (신뢰 불가) |
+| GRU | 초기 (데이터 누수 상태) | 86.67% (신뢰 불가) |
 | GRU | 누수 수정 후 | **64.29%** |
+
+> 📊 실제 예측 데이터: [SDE 기본](results/sde_baseline_predictions.csv) · [SDE+국채금리](results/sde_extended_bondyield_predictions.csv) · [GRU 초기(누수)](results/gru_initial_leakage_predictions.csv) · [GRU 최종](results/gru_final_predictions.csv)
 
 두 모델 모두 완전한 예측력을 확보하진 못했지만, 이는 금융 시계열이 갖는 본질적 비정상성(non-stationarity) 때문이라는 점을 확인했습니다. SDE는 이론적으로 확률 구조를 설명하는 데 강점이 있고, GRU는 실용적 단기 예측 성능이 더 안정적이었습니다.
 
@@ -88,6 +97,8 @@ GRU 초기 실험에서 정확도 86%라는, 금융 시계열 예측 치고는 �
 nasdaq-direction-prediction-sde-gru/
 ├── README.md
 ├── requirements.txt
+├── docs/
+│   └── technical-report.md   # 전체 연구 보고서 (방법론, 하이퍼파라미터, 논의)
 ├── data/                 # 원본/전처리 데이터 (대용량·민감 데이터는 .gitignore)
 ├── notebooks/            # 탐색적 분석, 실험 노트북
 ├── src/
@@ -95,7 +106,11 @@ nasdaq-direction-prediction-sde-gru/
 │   ├── sde_model.py      # SDE 기반 점수추정 모델
 │   ├── gru_model.py      # GRU 모델
 │   └── evaluate.py       # 정확도 평가, 시각화
-└── results/              # 결과 표, 그래프
+└── results/              # 실제 예측 결과 CSV
+    ├── sde_baseline_predictions.csv
+    ├── sde_extended_bondyield_predictions.csv
+    ├── gru_initial_leakage_predictions.csv
+    └── gru_final_predictions.csv
 ```
 
-> 현재 코드 정리 중입니다. 정리되는 대로 `src/`에 순차적으로 업로드할 예정입니다.
+> 코드(`src/`)는 현재 정리 중입니다. 정리되는 대로 순차적으로 업로드할 예정입니다.
