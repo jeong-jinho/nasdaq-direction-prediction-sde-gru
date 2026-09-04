@@ -13,4 +13,3 @@ date,predicted_direction,actual_direction,hit,predicted_return,actual_return
 2025-11-25,하락,상승,X,-0.0013,0.0143
 2025-11-26,상승,상승,O,0.0013,0.0158
 2025-11-28,상승,상승,O,0.0016,0.0055
-# 기간 내 적중률: 64.29%
