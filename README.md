@@ -120,3 +120,38 @@ nasdaq-direction-prediction-sde-gru/
     ├── gru_initial_leakage_predictions.csv
     └── gru_final_predictions.csv
 ```
+
+## 실행 방법
+
+이 코드는 Google Colab 환경에서 실행하도록 작성되었습니다 (`google.colab.files.upload()`로 CSV를 업로드받는 방식).
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/jeong-jinho/nasdaq-direction-prediction-sde-gru.git
+cd nasdaq-direction-prediction-sde-gru
+
+# 2. 패키지 설치
+pip install -r requirements.txt
+```
+
+**Colab에서 실행:**
+1. `src/preprocessing.py`, `src/gru_model.py`(또는 `src/sde_model.py`)를 Colab에 업로드하거나 셀에 붙여넣기
+2. 셀 실행 → 안내에 따라 나스닥 지수 CSV, 국채금리 CSV를 순서대로 업로드
+3. 학습 진행 상황과 30일 롤링 예측 결과, 최종 정확도가 출력됩니다
+
+**로컬에서 실행하려면:**
+`google.colab.files.upload()` 부분을 파일 경로를 직접 지정하는 코드로 바꿔주세요. 예:
+```python
+# 변경 전 (Colab)
+uploaded_nasdaq = files.upload()
+nasdaq_filename = list(uploaded_nasdaq.keys())[0]
+content = uploaded_nasdaq[nasdaq_filename]
+
+# 변경 후 (로컬)
+with open('nasdaq.csv', 'rb') as f:
+    content = f.read()
+```
+
+**입력 데이터 형식:**
+- 나스닥 CSV: `날짜`(인덱스), `시가`, `거래량`, `변동 %` 열 필요
+- 국채금리 CSV/XLSX: `날짜`(또는 `DATE`), `종가`(또는 `yield`) 열 필요
