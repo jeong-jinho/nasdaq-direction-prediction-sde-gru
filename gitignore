@@ -1,0 +1,22 @@
+# 데이터 (원본은 저작권·용량 문제가 있을 수 있으므로 제외, 필요시 샘플만 포함)
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/
+.idea/
