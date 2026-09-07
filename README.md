@@ -101,20 +101,22 @@ GRU 초기 실험에서 정확도 86%라는, 금융 시계열 예측 치고는 �
 nasdaq-direction-prediction-sde-gru/
 ├── README.md
 ├── requirements.txt
+├── .gitignore
 ├── docs/
-│   └── technical-report.md   # 전체 연구 보고서 (방법론, 하이퍼파라미터, 논의)
-├── data/                 # 원본/전처리 데이터 (대용량·민감 데이터는 .gitignore)
-├── notebooks/            # 탐색적 분석, 실험 노트북
-├── src/
-│   ├── preprocessing.py  # 결측치 처리, 피처 구성, 표준화
-│   ├── sde_model.py      # SDE 기반 점수추정 모델
-│   ├── gru_model.py      # GRU 모델
-│   └── evaluate.py       # 정확도 평가, 시각화
-└── results/              # 실제 예측 결과 CSV
+│   └── technical-report.md       # 전체 연구 보고서 (방법론, 하이퍼파라미터, 논의)
+├── src/                           # 최종 버전 (실제 사용한 모델)
+│   ├── preprocessing.py           # 공통 전처리 유틸 함수
+│   ├── gru_model.py               # GRU 최종 모델 (4차원: 나스닥 3피처+국채금리, 누수 수정 완료)
+│   └── sde_model.py               # SDE 최종 모델 (4차원: 나스닥 3피처+국채금리)
+├── experiments/                   # 최종본에 이르기까지의 실험 기록 (트러블슈팅 근거자료)
+│   ├── gru_v1_leakage.py          # 데이터 누수 있던 초기 GRU (86.67% 비정상 정확도 원인)
+│   ├── gru_v2_fixed_5d.py         # 누수는 수정했지만 아직 달러인덱스 포함(5차원)이던 버전
+│   ├── sde_v1_with_dxy.py         # 달러인덱스 포함 SDE 5차원 실험 (성능 개선 미미 확인용)
+│   └── future_forecast_tool.py    # 백테스트가 아닌 실시간 미래 예측용 별도 도구
+└── results/                       # 실제 예측 결과 CSV + 정확도 비교 그래프
+    ├── model_accuracy_comparison.png
     ├── sde_baseline_predictions.csv
     ├── sde_extended_bondyield_predictions.csv
     ├── gru_initial_leakage_predictions.csv
     └── gru_final_predictions.csv
 ```
-
-> 코드(`src/`)는 현재 정리 중입니다. 정리되는 대로 순차적으로 업로드할 예정입니다.
